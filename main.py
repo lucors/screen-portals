@@ -1,11 +1,19 @@
-import tkinter as tk
+
 from pystray import Icon, Menu, MenuItem
-from PIL import Image, ImageTk
+from PIL import Image
 import threading
 from screeninfo import get_monitors
 from pynput.mouse import Controller
 import random
 import pygame
+import sys
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel
+from PyQt5.QtCore import Qt, QThread
+from PyQt5.QtGui import QMovie
+import time
+
+app = QApplication(sys.argv)
+alive = True
 
 
 def play_sound_with_volume(file_path, volume):
@@ -28,12 +36,23 @@ def play_portal_enter():
     sound.start()
 
 
-def create_tray_icon(window):
+def kill():
+    global alive
+    alive = False
+
+
+def create_tray_icon():
     image = Image.open("trayico.png")
     icon = Icon("TkinterApp", image, menu=Menu(
-        MenuItem("Exit", lambda: window.destroy(), default=True)
+        MenuItem("Exit", kill, default=True)
     ))
     icon.run()
+
+
+def run_tray_icon_in_thread():
+    tray_thread = threading.Thread(target=create_tray_icon)
+    tray_thread.daemon = True
+    tray_thread.start()
 
 
 def get_current_screen(monitors, mouse_position):
@@ -43,143 +62,89 @@ def get_current_screen(monitors, mouse_position):
     return 0
 
 
-def mouse_move(portals, image):
-    after_id = None
-    mouse = Controller()
-    last_pos = mouse.position
-    last_screen = 0
-    monitors = get_monitors()
-    width, height = image.size
-    half_height = int(height/2)
-    half_width = int(width/2)
+class WorkerThread(QThread):
+    def __init__(self, portals, image):
+        super().__init__()
+        self.portals = portals
+        self.image = image
 
-    def show_all():
-        portals[0].deiconify()
-        portals[1].deiconify()
+    def show_all(self):
+        self.portals[0].show()
+        self.portals[1].show()
 
-    def hide_all():
-        portals[0].withdraw()
-        portals[1].withdraw()
+    def hide_all(self):
+        self.portals[0].hide()
+        self.portals[1].hide()
 
-    while True:
-        flag = mouse.position[0] == last_pos[0] and mouse.position[1] == last_pos[1]
-        if (flag):
-            continue
-        screen_index = get_current_screen(monitors, mouse.position)
+    def run(self):
+        global alive, app
+
+        timestamp = time.time()
+        mouse = Controller()
         last_pos = mouse.position
-        if (screen_index != last_screen):
-            if after_id:
-                portals[0].after_cancel(after_id)
-            show_all()
-            play_portal_enter()
-            #
-            after_id = portals[0].after(700, hide_all)
-            #
+        last_screen = 0
+        monitors = get_monitors()
+        width, height = self.image.size
+        half_height = int(height/2)
 
-            if (last_pos[0] >= monitors[last_screen].x + monitors[last_screen].width):
-                portals[0].geometry(
-                    f"+{monitors[last_screen].width - width}+{last_pos[1] - half_height}")
-                portals[1].geometry(
-                    f"+{monitors[screen_index].x}+{last_pos[1]- half_height}")
-            else:
-                portals[0].geometry(
-                    f"+{monitors[screen_index].width - width}+{last_pos[1] - half_height}")
-                portals[1].geometry(
-                    f"+{monitors[last_screen].x}+{last_pos[1]- half_height}")
-            last_screen = screen_index
+        while alive:
+            if timestamp and time.time() * 1000 > timestamp + 600:
+                timestamp = None
+                self.hide_all()
+            flag = mouse.position[0] == last_pos[0] and mouse.position[1] == last_pos[1]
+            if (flag):
+                continue
+            screen_index = get_current_screen(monitors, mouse.position)
+            last_pos = mouse.position
+            if (screen_index != last_screen):
+                timestamp = time.time() * 1000
+                self.show_all()
+                play_portal_enter()
+                #
+                if (last_pos[0] >= monitors[last_screen].x + monitors[last_screen].width):
+                    self.portals[0].move(monitors[last_screen].width -
+                                         width, last_pos[1] - half_height)
+                    time.sleep(0.02)
+                    self.portals[1].move(monitors[screen_index].x,
+                                         last_pos[1] - half_height)
+                else:
+                    self.portals[0].move(monitors[screen_index].width -
+                                         width, last_pos[1] - half_height)
+                    time.sleep(0.02)
+                    self.portals[1].move(monitors[last_screen].x,
+                                         last_pos[1] - half_height)
+                last_screen = screen_index
+        app.quit()
 
 
-def run_tray_icon_in_thread(window):
-    tray_thread = threading.Thread(target=create_tray_icon, args=(window,))
-    tray_thread.daemon = True
-    tray_thread.start()
+class TransparentAnimatedGIFWindow(QWidget):
+    def __init__(self, gif_path):
+        super().__init__()
+        self.setWindowFlags(Qt.FramelessWindowHint |
+                            Qt.WindowStaysOnTopHint | Qt.Tool)
+        self.setAttribute(Qt.WA_TranslucentBackground)
 
-
-def run_mouse_move_thread(portals, image):
-    mouse_thread = threading.Thread(target=mouse_move, args=(portals, image,))
-    mouse_thread.daemon = True
-    mouse_thread.start()
-
-
-class AnimatedGIF(tk.Label):
-    def __init__(self, master, path, **kwargs):
-        tk.Label.__init__(self, master, **kwargs)
         try:
-            self.frames = []
-            self.image_object = Image.open(path)
-            if not self.image_object.is_animated:
-                raise Exception("Изображение не анимировано")
-            for frame_number in range(self.image_object.n_frames):
-                self.image_object.seek(frame_number)
-                frame = self.image_object.copy()
-                frame = frame.convert(
-                    "RGBA") if frame.mode != "RGBA" else frame
-                self.frames.append(ImageTk.PhotoImage(frame)
-                                   )
-            self.current_frame = 0
-            self.animate_gif()
+            movie = QMovie(gif_path)
+            if not movie.isValid():
+                raise Exception("Не удалось загрузить GIF")
         except Exception as e:
-            print(f"Ошибка: {e}")
-            return
+            print(f"Ошибка загрузки GIF: {e}")
+            sys.exit(1)
 
-    def animate_gif(self):
-        try:
-            self.config(image=self.frames[self.current_frame])
-            self.current_frame = (self.current_frame + 1) % len(self.frames)
-            self.after(self.image_object.info.get('duration', 100),
-                       self.animate_gif)
-        except Exception as e:
-            print(f"Произошла ошибка {e}")
-
-
-def start_second_portal(root, image_path):
-    window = tk.Toplevel(root)
-    window.attributes('-fullscreen', False)
-    window.attributes('-transparentcolor', '#0078FF')
-    window.attributes('-topmost', True)
-    window.attributes('-toolwindow', True)
-    window.overrideredirect(True)
-    window.grab_set()
-    #
-    image = Image.open(image_path)
-    if image.mode != 'RGBA':
-        image = image.convert('RGBA')
-    width, height = image.size
-    window.geometry(f"{width}x{height}")
-    #
-    gif_widget = AnimatedGIF(window, path=image_path,  bg='#0078FF')
-    gif_widget.pack()
-    return window
+        self.movie_label = QLabel(self)
+        self.movie_label.setMovie(movie)
+        movie.start()
+        movie_size = movie.frameRect().size()
+        self.movie_label.setGeometry(
+            0, 0, movie_size.width(), movie_size.height())
+        self.setGeometry(300, 300, movie_size.width(), movie_size.height())
 
 
-def start_portal_window(image_path, image_path2):
-    window = tk.Tk()
-    window.attributes('-fullscreen', False)
-    window.attributes('-transparentcolor', '#BC4B00')
-    window.attributes('-topmost', True)
-    window.attributes('-toolwindow', True)
-    window.overrideredirect(True)
-    #
-    image = Image.open(image_path)
-    width, height = image.size
-    window.geometry(f"{width}x{height}")
-    #
-    gif_widget = AnimatedGIF(window, path=image_path,  bg='#BC4B00')
-    gif_widget.pack()
-    #
-    run_tray_icon_in_thread(window)
-    p2 = start_second_portal(window, image_path2)
-    run_mouse_move_thread([window, p2], image)
-    p2.withdraw()
-    window.withdraw()
-    window.mainloop()
-
-
-def start_portal_daemon(portal):
-    portal_thread = threading.Thread(target=lambda: portal.mainloop())
-    portal_thread.daemon = True
-    portal_thread.start()
-
-
-if __name__ == '__main__':
-    start_portal_window("portal.gif", "portal2.gif")
+if __name__ == "__main__":
+    portal = TransparentAnimatedGIFWindow("portal.gif")
+    portal2 = TransparentAnimatedGIFWindow("portal2.gif")
+    run_tray_icon_in_thread()
+    worker_thread = WorkerThread([portal, portal2], Image.open("portal.gif"))
+    worker_thread.start()
+    sys.exit(app.exec_())
