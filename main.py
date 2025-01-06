@@ -84,6 +84,7 @@ class WorkerThread(QThread):
         last_pos = mouse.position
         last_screen = 0
         monitors = get_monitors()
+        print(monitors)
         width, height = self.image.size
         half_height = int(height/2)
 
@@ -102,17 +103,15 @@ class WorkerThread(QThread):
                 play_portal_enter()
                 #
                 if (last_pos[0] >= monitors[last_screen].x + monitors[last_screen].width):
-                    self.portals[0].move(monitors[last_screen].width -
-                                         width, last_pos[1] - half_height)
+                    print("inv1")
+                    self.portals[0].move(monitors[last_screen].x + monitors[last_screen].width - width, last_pos[1] - half_height)
                     time.sleep(0.02)
-                    self.portals[1].move(monitors[screen_index].x,
-                                         last_pos[1] - half_height)
+                    self.portals[1].move(monitors[screen_index].x, last_pos[1] - half_height)
                 else:
-                    self.portals[0].move(monitors[screen_index].width -
-                                         width, last_pos[1] - half_height)
+                    print("inv2")
+                    self.portals[0].move(monitors[screen_index].x + monitors[screen_index].width - width, last_pos[1] - half_height)
                     time.sleep(0.02)
-                    self.portals[1].move(monitors[last_screen].x,
-                                         last_pos[1] - half_height)
+                    self.portals[1].move(monitors[last_screen].x, last_pos[1] - half_height)
                 last_screen = screen_index
         app.quit()
 
