@@ -102,16 +102,15 @@ class WorkerThread(QThread):
                 self.show_all()
                 play_portal_enter()
                 #
+                time.sleep(0.02)
                 if (last_pos[0] >= monitors[last_screen].x + monitors[last_screen].width):
-                    print("inv1")
                     self.portals[0].move(monitors[last_screen].x + monitors[last_screen].width - width, last_pos[1] - half_height)
                     time.sleep(0.02)
                     self.portals[1].move(monitors[screen_index].x, last_pos[1] - half_height)
                 else:
-                    print("inv2")
                     self.portals[0].move(monitors[screen_index].x + monitors[screen_index].width - width, last_pos[1] - half_height)
                     time.sleep(0.02)
-                    self.portals[1].move(monitors[last_screen].x, last_pos[1] - half_height)
+                    self.portals[1].move(monitors[last_screen].x,  last_pos[1] - half_height)
                 last_screen = screen_index
         app.quit()
 
