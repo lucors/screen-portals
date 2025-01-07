@@ -100,40 +100,34 @@ class WorkerThread(QThread):
             last_pos = mouse.position
             if (screen_index != last_screen):
                 timestamp = time.time() * 1000
-                self.show_all()
-                play_portal_enter()
-                #
-                time.sleep(0.02)
-                if (monitors[screen_index].x >= monitors[last_screen].x + monitors[last_screen].width):
-                    # Текущий справа
+                # Текущий справа
+                if (monitors[screen_index].x >= monitors[last_screen].x + monitors[last_screen].width): 
                     self.set_vertical(True)
                     self.portals[0].move(monitors[last_screen].x + monitors[last_screen].width - width, last_pos[1] - half_height)
                     time.sleep(0.02)
                     self.portals[1].move(monitors[screen_index].x, last_pos[1] - half_height)
-                    
+                # Текущий слева
                 elif (monitors[last_screen].x >= monitors[screen_index].x + monitors[screen_index].width):
-                    # Текущий слева
                     self.set_vertical(True)
                     self.portals[0].move(monitors[screen_index].x + monitors[screen_index].width - width, last_pos[1] - half_height)
                     time.sleep(0.02)
                     self.portals[1].move(monitors[last_screen].x,  last_pos[1] - half_height)
-                    
+                # Текущий сверху 
                 if (monitors[last_screen].y >= monitors[screen_index].y + monitors[screen_index].height):
-                    # Текущий сверху
                     self.set_vertical(False)
                     # width == height_h
                     self.portals[0].move(last_pos[0] - half_width, monitors[screen_index].y + monitors[screen_index].height - width)
                     time.sleep(0.02)
                     self.portals[1].move(last_pos[0] - half_width, monitors[last_screen].y)
-                    
+                # Текущий снизу
                 elif (monitors[screen_index].y >= monitors[last_screen].y + monitors[last_screen].height):
-                    # Текущий снизу
                     self.set_vertical(False)
                     # width == height_h
                     self.portals[0].move(last_pos[0] - half_width, monitors[last_screen].y + monitors[last_screen].height - width)
                     time.sleep(0.02)
                     self.portals[1].move(last_pos[0] - half_width, monitors[screen_index].y)
-                    
+                self.show_all()
+                play_portal_enter()   
                 last_screen = screen_index   
         app.quit()
 
