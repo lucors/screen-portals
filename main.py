@@ -1,5 +1,3 @@
-
-from pystray import Icon, Menu, MenuItem
 from PIL import Image
 import threading
 from screeninfo import get_monitors
@@ -7,9 +5,9 @@ from pynput.mouse import Controller
 import random
 import pygame
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QSystemTrayIcon, QMenu
 from PyQt5.QtCore import Qt, QThread
-from PyQt5.QtGui import QMovie
+from PyQt5.QtGui import QMovie, QIcon
 import time
 
 app = QApplication(sys.argv)
@@ -42,17 +40,13 @@ def kill():
 
 
 def create_tray_icon():
-    image = Image.open("trayico.png")
-    icon = Icon("TkinterApp", image, menu=Menu(
-        MenuItem("Exit", kill, default=True)
-    ))
-    icon.run()
-
-
-def run_tray_icon_in_thread():
-    tray_thread = threading.Thread(target=create_tray_icon)
-    tray_thread.daemon = True
-    tray_thread.start()
+    global app
+    trayIcon = QSystemTrayIcon(QIcon("trayico.png"), parent=app)
+    trayIcon.setToolTip("Screen Portals")
+    menu = QMenu()
+    menu.addAction("Quit", kill)
+    trayIcon.setContextMenu(menu)
+    trayIcon.show()
 
 
 def get_current_screen(monitors, mouse_position):
@@ -104,13 +98,17 @@ class WorkerThread(QThread):
                 #
                 time.sleep(0.02)
                 if (last_pos[0] >= monitors[last_screen].x + monitors[last_screen].width):
-                    self.portals[0].move(monitors[last_screen].x + monitors[last_screen].width - width, last_pos[1] - half_height)
+                    self.portals[0].move(
+                        monitors[last_screen].x + monitors[last_screen].width - width, last_pos[1] - half_height)
                     time.sleep(0.02)
-                    self.portals[1].move(monitors[screen_index].x, last_pos[1] - half_height)
+                    self.portals[1].move(
+                        monitors[screen_index].x, last_pos[1] - half_height)
                 else:
-                    self.portals[0].move(monitors[screen_index].x + monitors[screen_index].width - width, last_pos[1] - half_height)
+                    self.portals[0].move(
+                        monitors[screen_index].x + monitors[screen_index].width - width, last_pos[1] - half_height)
                     time.sleep(0.02)
-                    self.portals[1].move(monitors[last_screen].x,  last_pos[1] - half_height)
+                    self.portals[1].move(
+                        monitors[last_screen].x,  last_pos[1] - half_height)
                 last_screen = screen_index
         app.quit()
 
@@ -125,7 +123,7 @@ class TransparentAnimatedGIFWindow(QWidget):
         try:
             movie = QMovie(gif_path)
             if not movie.isValid():
-                raise Exception("Не удалось загрузить GIF")
+                raise Exception(f"Не удалось загрузить GIF '{gif_path}'")
         except Exception as e:
             print(f"Ошибка загрузки GIF: {e}")
             sys.exit(1)
@@ -140,9 +138,10 @@ class TransparentAnimatedGIFWindow(QWidget):
 
 
 if __name__ == "__main__":
+    app.setWindowIcon(QIcon("trayico.png"))
     portal = TransparentAnimatedGIFWindow("portal.gif")
     portal2 = TransparentAnimatedGIFWindow("portal2.gif")
-    run_tray_icon_in_thread()
+    create_tray_icon()
     worker_thread = WorkerThread([portal, portal2], Image.open("portal.gif"))
     worker_thread.start()
     sys.exit(app.exec_())
