@@ -94,6 +94,7 @@ class WorkerThread(QThread):
                 self.hide_all()
             flag = mouse.position[0] == last_pos[0] and mouse.position[1] == last_pos[1]
             if (flag):
+                time.sleep(0.05)
                 continue
             screen_index = get_current_screen(monitors, mouse.position)
             last_pos = mouse.position
