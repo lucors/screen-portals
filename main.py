@@ -27,7 +27,7 @@ def play_sound_with_volume(file_path, volume):
 
 
 def play_portal_enter():
-    i = random.randint(1, 2)
+    i = random.randint(1, 3)
     sound = threading.Thread(
         target=play_sound_with_volume, args=(f"portal_enter{i}.wav", 0.1,))
     sound.daemon = True
